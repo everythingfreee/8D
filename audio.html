@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>8D Audio Converter</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #4CAF50;
+            --primary-hover: #45a049;
+            --text-color: #333;
+            --bg-color: #f0f0f0;
+            --card-bg: #ffffff;
+            --border-color: #ccc;
+        }
+
+        body {
+            font-family: 'Roboto', Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: var(--bg-color);
+            transition: background-color 0.3s ease;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+            max-width: 400px;
+            width: 100%;
+        }
+
+        h1 {
+            margin-bottom: 1.5rem;
+            color: var(--text-color);
+            font-size: 2rem;
+        }
+
+        #drop-area {
+            border: 2px dashed var(--border-color);
+            border-radius: 20px;
+            padding: 2rem;
+            margin: 0 auto 1.5rem;
+            cursor: pointer;
+            transition: border-color 0.3s ease, background-color 0.3s ease;
+        }
+
+        #drop-area:hover {
+            border-color: var(--primary-color);
+            background-color: rgba(76, 175, 80, 0.1);
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        button {
+            background-color: var(--primary-color);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            margin: 8px 4px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s ease, transform 0.1s ease;
+        }
+
+        button:disabled {
+            background-color: var(--border-color);
+            cursor: not-allowed;
+        }
+
+        button:hover:not(:disabled) {
+            background-color: var(--primary-hover);
+        }
+
+        button:active:not(:disabled) {
+            transform: scale(0.98);
+        }
+
+        #mode-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: transparent;
+            color: var(--text-color);
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .dark-mode {
+            --text-color: #fff;
+            --bg-color: #333;
+            --card-bg: #444;
+            --border-color: #666;
+        }
+
+        canvas {
+            width: 100%;
+            height: 150px;
+            margin-bottom: 1.5rem;
+            border-radius: 10px;
+        }
+
+        .slider-container {
+            margin-bottom: 1rem;
+            text-align: left;
+        }
+
+        .slider-container label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-color);
+        }
+
+        input[type="range"] {
+            width: 100%;
+            margin-bottom: 1rem;
+            -webkit-appearance: none;
+            background: transparent;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            cursor: pointer;
+            margin-top: -6px;
+        }
+
+        input[type="range"]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            background: var(--border-color);
+            border-radius: 2px;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .icon {
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+    <button id="mode-toggle"><i class="fas fa-moon"></i></button>
+    <div class="container">
+        <h1>8D Audio Converter</h1>
+        <div id="drop-area">
+            <i class="fas fa-cloud-upload-alt fa-3x" style="color: var(--primary-color); margin-bottom: 1rem;"></i>
+            <p>Drag & Drop or Click to Upload Audio File</p>
+        </div>
+        <input type="file" id="file-input" accept="audio/*">
+        <canvas id="visualizer"></canvas>
+        <div class="slider-container">
+            <label for="pan-speed"><i class="fas fa-tachometer-alt icon"></i>Pan Speed:</label>
+            <input type="range" id="pan-speed" min="0.1" max="2" step="0.1" value="1">
+        </div>
+        <div class="slider-container">
+            <label for="pan-width"><i class="fas fa-arrows-alt-h icon"></i>Pan Width:</label>
+            <input type="range" id="pan-width" min="0" max="1" step="0.1" value="0.5">
+        </div>
+        <button id="play-pause" disabled><i class="fas fa-play icon"></i>Play</button>
+        <button id="download" disabled><i class="fas fa-download icon"></i>Download 8D Audio</button>
+        <span id="upload-status" class="loading hidden"></span>
+        <span id="play-status" class="loading hidden"></span>
+        <span id="download-status" class="loading hidden"></span>
+    </div>
+
+    <script>
+        const modeToggle = document.getElementById('mode-toggle');
+        const dropArea = document.getElementById('drop-area');
+        const fileInput = document.getElementById('file-input');
+        const playPauseButton = document.getElementById('play-pause');
+        const downloadButton = document.getElementById('download');
+        const panSpeedSlider = document.getElementById('pan-speed');
+        const panWidthSlider = document.getElementById('pan-width');
+        const uploadStatus = document.getElementById('upload-status');
+        const playStatus = document.getElementById('play-status');
+        const downloadStatus = document.getElementById('download-status');
+
+        let audioContext, source, stereoPanner, analyser, gainNode;
+        let isPlaying = false;
+        let animationId;
+        let audioBuffer;
+
+        modeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            modeToggle.innerHTML = document.body.classList.contains('dark-mode') 
+                ? '<i class="fas fa-sun"></i>' 
+                : '<i class="fas fa-moon"></i>';
+        });
+
+        dropArea.addEventListener('click', () => fileInput.click());
+        dropArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropArea.style.borderColor = '#00ff00';
+        });
+        dropArea.addEventListener('dragleave', () => {
+            dropArea.style.borderColor = '';
+        });
+        dropArea.addEventListener('drop', handleFile);
+        fileInput.addEventListener('change', handleFile);
+
+        function handleFile(e) {
+            e.preventDefault();
+            const file = e.target.files ? e.target.files[0] : e.dataTransfer.files[0];
+            if (file && file.type.startsWith('audio/')) {
+                uploadStatus.classList.remove('hidden');
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const arrayBuffer = event.target.result;
+                    setupAudio(arrayBuffer);
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        }
+
+        function setupAudio(arrayBuffer) {
+            if (audioContext) audioContext.close();
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            audioContext.decodeAudioData(arrayBuffer).then((buffer) => {
+                audioBuffer = buffer;
+                source = audioContext.createBufferSource();
+                source.buffer = audioBuffer;
+
+                stereoPanner = audioContext.createStereoPanner();
+                analyser = audioContext.createAnalyser();
+                gainNode = audioContext.createGain();
+
+                source.connect(stereoPanner);
+                stereoPanner.connect(analyser);
+                analyser.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                setupVisualization();
+                animate();
+
+                playPauseButton.disabled = false;
+                downloadButton.disabled = false;
+                uploadStatus.classList.add('hidden');
+            }).catch((error) => {
+                console.error('Error decoding audio data:', error);
+                uploadStatus.classList.add('hidden');
+            });
+        }
+
+        function setupVisualization() {
+            const canvas = document.getElementById('visualizer');
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+
+            analyser.fftSize = 256;
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            function draw() {
+                animationId = requestAnimationFrame(draw);
+
+                analyser.getByteFrequencyData(dataArray);
+
+                ctx.fillStyle = 'rgb(0, 0, 0)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                const barWidth = (canvas.width / bufferLength) * 2.5;
+                let barHeight;
+                let x = 0;
+
+                for (let i = 0; i < bufferLength; i++) {
+                    barHeight = dataArray[i] / 2;
+
+                    ctx.fillStyle = `hsl(${i * 360 / bufferLength}, 100%, 50%)`;
+                    ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+
+                    x += barWidth + 1;
+                }
+            }
+
+            draw();
+        }
+
+        function animate() {
+            // This function is intentionally left empty as the visualization is handled in setupVisualization
+        }
+
+        playPauseButton.addEventListener('click', () => {
+            if (!audioBuffer) return;
+
+            if (isPlaying) {
+                source.stop();
+                playPauseButton.innerHTML = '<i class="fas fa-play icon"></i>Play';
+                playStatus.classList.add('hidden');
+            } else {
+                playStatus.classList.remove('hidden');
+                source = audioContext.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(stereoPanner);
+                source.start(0);
+                playPauseButton.innerHTML = '<i class="fas fa-pause icon"></i>Pause';
+            }
+            isPlaying = !isPlaying;
+        });
+
+        let panPhase = 0;
+        function updatePan() {
+            if (isPlaying && stereoPanner) {
+                const panSpeed = parseFloat(panSpeedSlider.value);
+                const panWidth = parseFloat(panWidthSlider.value);
+                panPhase += 0.05 * panSpeed;
+                const panValue = Math.sin(panPhase) * panWidth;
+                stereoPanner.pan.setValueAtTime(panValue, audioContext.currentTime);
+            }
+            requestAnimationFrame(updatePan);
+        }
+        updatePan();
+        downloadButton.addEventListener('click', () => {
+    if (!audioBuffer) return;
+
+    downloadStatus.classList.remove('hidden');
+    const offlineCtx = new OfflineAudioContext(2, audioBuffer.length, audioBuffer.sampleRate);
+    const offlineSource = offlineCtx.createBufferSource();
+    const offlineStereoPanner = offlineCtx.createStereoPanner();
+    const offlineGain = offlineCtx.createGain();
+
+    offlineSource.buffer = audioBuffer;
+    offlineSource.connect(offlineStereoPanner);
+    offlineStereoPanner.connect(offlineGain);
+    offlineGain.connect(offlineCtx.destination);
+
+    offlineSource.start();
+    let renderPanPhase = 0;
+    const panSpeed = parseFloat(panSpeedSlider.value);
+    const panWidth = parseFloat(panWidthSlider.value);
+    
+    // Apply 8D effect during rendering
+    for (let i = 0; i < audioBuffer.length; i += 128) {
+        renderPanPhase += 0.01 * panSpeed;
+        const panValue = Math.sin(renderPanPhase) * panWidth;
+        offlineStereoPanner.pan.setValueAtTime(panValue, i / audioBuffer.sampleRate);
+    }
+
+    offlineCtx.startRendering().then((renderedBuffer) => {
+        const wavBlob = bufferToWave(renderedBuffer, renderedBuffer.length);
+        const url = URL.createObjectURL(wavBlob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = '8D_audio.wav';  // Changed to .wav extension
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            downloadStatus.classList.add('hidden');
+        }, 100);
+    }).catch((err) => {
+        console.error('Rendering failed: ', err);
+        downloadStatus.classList.add('hidden');
+    });
+});
+    function bufferToWave(abuffer, len) {
+        const numOfChan = abuffer.numberOfChannels;
+        const length = len * numOfChan * 2 + 44;
+        const buffer = new ArrayBuffer(length);
+        const view = new DataView(buffer);
+        const channels = [];
+        let sample, offset = 0;
+
+        // write WAVE header
+        setUint32(0x46464952);
+        setUint32(length - 8);
+        setUint32(0x45564157);
+        setUint32(0x20746d66);
+        setUint32(16);
+        setUint16(1);
+        setUint16(numOfChan);
+        setUint32(abuffer.sampleRate);
+        setUint32(abuffer.sampleRate * 2 * numOfChan);
+        setUint16(numOfChan * 2);
+        setUint16(16);
+        setUint32(0x61746164);
+        setUint32(length - offset - 4);
+
+        for (let i = 0; i < abuffer.numberOfChannels; i++)
+            channels.push(abuffer.getChannelData(i));
+
+        while (offset < len) {
+            for (let i = 0; i < numOfChan; i++) {
+                sample = Math.max(-1, Math.min(1, channels[i][offset]));
+                sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0;
+                view.setInt16(offset * numOfChan * 2 + i * 2 + 44, sample, true);
+            }
+            offset++;
+        }
+
+        return new Blob([buffer], { type: 'audio/wav' });
+
+        function setUint16(data) {
+            view.setUint16(offset, data, true);
+            offset += 2;
+        }
+
+        function setUint32(data) {
+            view.setUint32(offset, data, true);
+            offset += 4;
+        }
+    }
+    </script>
+</body>
+</html>
